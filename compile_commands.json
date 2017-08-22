@@ -1,0 +1,16 @@
+[
+    {
+        "arguments": [
+            "cc",
+            "-c",
+            "-x",
+            "c",
+            "-std=c99",
+            "-o",
+            "labyrinth",
+            "labyrinth.c"
+        ],
+        "directory": "/home/ramiro/git/simple-labyrinth",
+        "file": "labyrinth.c"
+    }
+]

@@ -2,7 +2,7 @@
 #include <time.h>
 #include <stdlib.h>
 
-typedef enum {N, S, E, O, X} dir; // X: Ninguna direccion
+typedef enum {N=0, S, E, O, X} dir; // X: Ninguna direccion
 typedef enum {LLENO, VACIO, ENTRADA, SALIDA} sym;
 
 typedef struct celda {
@@ -25,6 +25,13 @@ typedef struct repr_celda {
 	sym nor, sur, est, oes, cen;		
 } repr_celda;
 
+// POR HACER
+/* Una estructura de lista enlazada para ir recorriendo el laberinto */
+typedef struct nodo {
+	struct nodo* conexiones[4];	
+	int visitado;
+} nodo;
+
 
 // PROTOTIPOS //
 
@@ -40,6 +47,8 @@ void borrarRepr(repr_celda**, int, int);
 // Algoritmo principal que trabaja sobre un laberinto y su representacion. Toma como parametros
 // las coordenadas de la posicion inicial
 void excavarLaberinto(lab*, repr_celda**, int, int);
+// Encuentra la salida y la marca (backrecursive algorithm)
+void marcarSolucion(repr_celda**, int, int);
 
 /* Funciones sencillas */
 int calcX(int x, dir d) {
@@ -70,13 +79,13 @@ char diropuesta(dir d) {
 		case X: return d;
 	}
 }
-void romperPared(repr_celda *c, dir d) {
+void romperPared(repr_celda *c, dir d, sym s) {
 	switch(d) {
-		case N: c->nor = VACIO; break;
-		case S: c->sur = VACIO; break; 
-		case E: c->est = VACIO; break;
-		case O: c->oes = VACIO; break;
-		case X: c->cen = VACIO; break;
+		case N: c->nor = s; break;
+		case S: c->sur = s; break; 
+		case E: c->est = s; break;
+		case O: c->oes = s; break;
+		case X: c->cen = s; break;
 	}
 }
 char eligeSimbolo(sym s) {
@@ -88,22 +97,48 @@ char eligeSimbolo(sym s) {
 	}
 }
 
+
+
 // Llena un puntero a dir* con direcciones aleatorias.
 void obtenerDirs(dir*);
 // Funcion que imprime el laberinto. Toma un arreglo bidimensional de repr_celda como
 // parametro; ademas del alto y ancho del laberinto.
 void labtostr(repr_celda**, int, int);
+// Marca la salida/entrada en la representacion del laberinto (repr_celda**)
+void marcarSalida(repr_celda** rep, sym s, int x, int y, int ancho, int alto);
 
-int main() {
-	srand(time(NULL));
-	int alto, ancho; alto = ancho = 5;
-	lab *x = laberintoVacio(ancho, alto);
+/////// MAIN ///////
 
-	repr_celda** rep = reprVacio(ancho, alto);	
-	excavarLaberinto(x, rep, 0, 0);
-	labtostr(rep, ancho, alto);
-	borrarLaberinto(x);
-	borrarRepr(rep, ancho, alto);
+int main(int argc, char* argv[]) {
+	if(argc == 5) {
+		// Se utiliza como semilla para rand() el tiempo actual del sistema
+		srand(time(NULL));
+
+		int alto, ancho;
+		int posx, posy;
+
+		ancho = atoi(argv[1]); alto = atoi(argv[2]);
+		posx = atoi(argv[3]); posy = atoi(argv[4]);	
+
+		lab *x = laberintoVacio(ancho, alto);
+		repr_celda** rep = reprVacio(ancho, alto);	
+
+		excavarLaberinto(x, rep, 0, 0);
+
+		// Marcamos la entrada del laberinto
+		marcarSalida(rep, ENTRADA, posx, posy, ancho, alto);
+		// Marcamos la salida del laberinto
+		marcarSalida(rep, SALIDA, ancho-1, alto-1, ancho, alto);
+
+		labtostr(rep, ancho, alto);
+		borrarLaberinto(x);
+		borrarRepr(rep, ancho, alto);
+
+
+	} else {
+		puts("Numero invalido de argumentos.");
+		puts("uso: labyrinth <ancho> <alto> <posx> <posy>");
+	}
 	return 0;
 }
 
@@ -111,6 +146,15 @@ void celdaVacia(celda* c) {
 	c->dirs = malloc(sizeof(dir)*4);
 	c->visitada = 0; c->dir_actual = 0;
 	c->conexion = X; obtenerDirs(c->dirs);
+}
+
+// POR HACER
+void nodoVacio(nodo* n) {
+	n = malloc(sizeof(nodo));
+	// Se inicializan todas las conexiones en NULL
+	for(int i=0; i < 4; i++) {
+		n->conexiones[i] = NULL;
+	}
 }
 
 void borrarRepr(repr_celda** r, int ancho, int alto) {
@@ -166,7 +210,7 @@ void excavarLaberinto(lab* l, repr_celda** rep, int x, int y) {
 	int distancia_total = 0;
 
 	celda* celda_actual = &l->celdas[y][x];
-	romperPared(&rep[y][x], X);
+	romperPared(&rep[y][x], X, VACIO);
 	celda_actual->visitada = 1;
 
 	while (celdas_visitadas < total_celdas) {
@@ -198,9 +242,9 @@ void excavarLaberinto(lab* l, repr_celda** rep, int x, int y) {
 				celda_siguiente->conexion = diropuesta(nueva_dir);
 				
 				// Se rompen las paredes correspondientes
-				romperPared(&rep[y][x], nueva_dir);
-				romperPared(&rep[nuevo_y][nuevo_x], diropuesta(nueva_dir));
-				romperPared(&rep[nuevo_y][nuevo_x], X);
+				romperPared(&rep[y][x], nueva_dir, VACIO);
+				romperPared(&rep[nuevo_y][nuevo_x], diropuesta(nueva_dir), VACIO);
+				romperPared(&rep[nuevo_y][nuevo_x], X, VACIO);
 
 				y = nuevo_y; x = nuevo_x;
 				puts("Pasando a siguiente celda...");
@@ -219,6 +263,8 @@ void excavarLaberinto(lab* l, repr_celda** rep, int x, int y) {
 		x = calcX(x, celda_actual->conexion);
 		celda_actual = &l->celdas[y][x];
 	}
+	puts("Todas las celdas han sido visitadas. Laberinto excavado exitosamente!");
+	puts("----------------------");
 }
 
 void obtenerDirs(dir* dir_arr) {
@@ -236,7 +282,7 @@ void obtenerDirs(dir* dir_arr) {
 	}
 }
 
-void labtostr(repr_celda** rep, int alto, int ancho) {
+void labtostr(repr_celda** rep, int ancho, int alto) {
 	char* resultado;
 	char centro, arriba, abajo, derecha, izquierda;
 	for (int fila=0; fila < alto; fila++) {
@@ -261,4 +307,21 @@ void labtostr(repr_celda** rep, int alto, int ancho) {
 		printf("#%c#", abajo);
 	}
 	puts("");
+}
+
+void marcarSalida(repr_celda** rep, sym s, int x, int y, int ancho, int alto) {
+	// Si se encuentra en un borde, se rompe la pared
+	// Si se encuentra en una esquina, se rompe preferentemente las paredes verticales
+	// Si no es ninguna de los anteriores, se marca el centro como entrada
+	int salida_marcada = 0;
+	if (y == 0)		romperPared(&rep[y][x], N, s);
+	else if (y == alto-1)	romperPared(&rep[y][x], S, s);	
+	else if (x == 0)	romperPared(&rep[y][x], O, s); 
+	else if (x == ancho-1)	romperPared(&rep[y][x], E, s);
+	else 			romperPared(&rep[y][x], X, s);
+}
+
+// POR HACER
+void marcarSolucion(repr_celda** l, int x, int y) {
+	dir* direcciones; obtenerDirs(direcciones);
 }

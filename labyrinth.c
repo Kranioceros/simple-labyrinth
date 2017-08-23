@@ -88,20 +88,20 @@ char eligeSimbolo(sym s) {
 	}
 }
 
-/* Llena un puntero a dir con direcciones aleatorias (usa time() y rand()) */
+// Llena un puntero a dir* con direcciones aleatorias.
 void obtenerDirs(dir*);
 // Funcion que imprime el laberinto. Toma un arreglo bidimensional de repr_celda como
 // parametro; ademas del alto y ancho del laberinto.
 void labtostr(repr_celda**, int, int);
 
 int main() {
+	srand(time(NULL));
 	int alto, ancho; alto = ancho = 5;
 	lab *x = laberintoVacio(ancho, alto);
 
 	repr_celda** rep = reprVacio(ancho, alto);	
 	excavarLaberinto(x, rep, 0, 0);
 	labtostr(rep, ancho, alto);
-
 	borrarLaberinto(x);
 	borrarRepr(rep, ancho, alto);
 	return 0;
@@ -151,7 +151,6 @@ void borrarCelda(celda* c) {
 }
 
 void borrarLaberinto(lab *l) {
-	puts("Dentro de borrarLaberinto");
 	for(int fila = 0; fila < l-> alto; fila++) {
 		for(int col = 0; col < l-> ancho; col++)
 			borrarCelda(&l->celdas[fila][col]);

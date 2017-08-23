@@ -3,29 +3,43 @@
 #include <stdlib.h>
 
 typedef enum {N, S, E, O, X} dir; // X: Ninguna direccion
+typedef enum {LLENO, VACIO, ENTRADA, SALIDA} sym;
 
-typedef struct {
+typedef struct celda {
 	int visitada;
-	dir conexion;
-	dir* dirs;
-	int dir_actual;
+	dir conexion; // Indica direccion desde la cual la celda fue visitada por primera vez
+	dir* dirs;    // Arreglo de 4 direcciones aleatorias
+	int dir_actual; // Indica numero de direcciones empleadas del arreglo anterior
 } celda;
 
-typedef struct {
+typedef struct lab {
 	// Datos generales del laberinto
 	int alto, ancho;
-	int entradax, salidax;
+	int entradax, salidax; // Coordenadas de la entrada y salida
 	int entraday, saliday;
-	celda** celdas;
+	celda** celdas; // Arreglo bidimensional de celdas que conforma el laberinto
 } lab;
+
+/* Esta es una estructura auxiliar que facilita la impresion en pantalla del laberinto */
+typedef struct repr_celda {
+	sym nor, sur, est, oes, cen;		
+} repr_celda;
 
 
 // PROTOTIPOS //
 
 /* Funciones fundamentales que operan con laberintos */
+// Genera una tabla bidimensional de repr_celda que va a conformar
+// la representacion del laberinto
+repr_celda** reprVacio(int, int); 
+// Genera un laberinto vacio
 lab* laberintoVacio(int, int);
+// Funciones que desalojan de memoria las estructuras anteriores
 void borrarLaberinto(lab*);
-void excavarLaberinto(lab*, int, int);
+void borrarRepr(repr_celda**, int, int);
+// Algoritmo principal que trabaja sobre un laberinto y su representacion. Toma como parametros
+// las coordenadas de la posicion inicial
+void excavarLaberinto(lab*, repr_celda**, int, int);
 
 /* Funciones sencillas */
 int calcX(int x, dir d) {
@@ -56,36 +70,77 @@ char diropuesta(dir d) {
 		case X: return d;
 	}
 }
+void romperPared(repr_celda *c, dir d) {
+	switch(d) {
+		case N: c->nor = VACIO; break;
+		case S: c->sur = VACIO; break; 
+		case E: c->est = VACIO; break;
+		case O: c->oes = VACIO; break;
+		case X: c->cen = VACIO; break;
+	}
+}
+char eligeSimbolo(sym s) {
+	switch(s) {
+		case VACIO: return ' ';
+		case LLENO: return '#';
+		case ENTRADA: return 'E';
+		case SALIDA: return 'S';
+	}
+}
 
 /* Llena un puntero a dir con direcciones aleatorias (usa time() y rand()) */
 void obtenerDirs(dir*);
-char* labtostr(lab*);
+// Funcion que imprime el laberinto. Toma un arreglo bidimensional de repr_celda como
+// parametro; ademas del alto y ancho del laberinto.
+void labtostr(repr_celda**, int, int);
 
 int main() {
-	lab *x = laberintoVacio(10, 10);
-	puts("laberinto creado");
-	excavarLaberinto(x, 0, 0);
-	char* ascii = labtostr(x);
-	puts(ascii);
+	int alto, ancho; alto = ancho = 5;
+	lab *x = laberintoVacio(ancho, alto);
+
+	repr_celda** rep = reprVacio(ancho, alto);	
+	excavarLaberinto(x, rep, 0, 0);
+	labtostr(rep, ancho, alto);
+
+	borrarLaberinto(x);
+	borrarRepr(rep, ancho, alto);
 	return 0;
 }
 
-celda* celdaVacia() {
-	celda* nueva; 	
-	nueva = malloc(sizeof(celda));	
-	nueva->visitada = 0; nueva->dir_actual = 0;
-	nueva->conexion = X; obtenerDirs(nueva->dirs);
+void celdaVacia(celda* c) {
+	c->dirs = malloc(sizeof(dir)*4);
+	c->visitada = 0; c->dir_actual = 0;
+	c->conexion = X; obtenerDirs(c->dirs);
+}
 
-	return nueva;
+void borrarRepr(repr_celda** r, int ancho, int alto) {
+	for (int fila=0; fila < alto; fila++)
+		free(r[fila]);
+	free(r);
+}
+
+repr_celda** reprVacio(int ancho, int alto) {
+	repr_celda** rep = malloc(sizeof(repr_celda*) * alto);
+	for(int fila = 0; fila < alto; fila++) {
+		rep[fila] = malloc(sizeof(repr_celda) * ancho);
+		for(int col=0; col < 5; col++) {
+			rep[fila][col].nor = rep[fila][col].sur =
+			rep[fila][col].est = rep[fila][col].oes =
+			rep[fila][col].cen = LLENO;
+		}
+	}
+
+	return rep;
 }
 
 lab* laberintoVacio(int ancho, int alto) {
 	lab* nuevo = malloc(sizeof(lab));
 	nuevo->ancho = ancho; nuevo->alto = alto;
+	nuevo->celdas = malloc(sizeof(celda*) * alto);
 	for (int fila = 0; fila < alto; fila++) {
-		nuevo->celdas[fila] = malloc(sizeof(celda*) * ancho);
+		nuevo->celdas[fila] = malloc(sizeof(celda) * ancho);
 		for (int col = 0; col < ancho; col++) {
-			nuevo->celdas[
+			celdaVacia(&nuevo->celdas[fila][col]);
 		}
 	}
 
@@ -93,24 +148,27 @@ lab* laberintoVacio(int ancho, int alto) {
 }
 void borrarCelda(celda* c) {
 	free(c->dirs);	
-	free(c);
 }
 
 void borrarLaberinto(lab *l) {
+	puts("Dentro de borrarLaberinto");
 	for(int fila = 0; fila < l-> alto; fila++) {
-		for(int col = 0; col < l-> ancho; col++) {
+		for(int col = 0; col < l-> ancho; col++)
 			borrarCelda(&l->celdas[fila][col]);
-		}
 		free(l->celdas[fila]);
 	}
+	free(l);
 }
 
-void excavarLaberinto(lab* l, int x, int y) {
+void excavarLaberinto(lab* l, repr_celda** rep, int x, int y) {
 	const int total_celdas = l->alto * l->ancho;
 
 	int celdas_visitadas = 1;
 	int distancia_total = 0;
+
 	celda* celda_actual = &l->celdas[y][x];
+	romperPared(&rep[y][x], X);
+	celda_actual->visitada = 1;
 
 	while (celdas_visitadas < total_celdas) {
 		// Si quedan direcciones, se elige una
@@ -134,24 +192,33 @@ void excavarLaberinto(lab* l, int x, int y) {
 				nuevo_x < l->ancho && nuevo_x >= 0 &&
 				l->celdas[nuevo_y][nuevo_x].visitada == 0	)
 			{
+				celda *celda_siguiente = &l->celdas[nuevo_y][nuevo_x];
 
+				// Se hace la conexion con la celda actual
 				puts("Siguiente celda disponible!");	
-				l->celdas[nuevo_y][nuevo_x].conexion = 
-					diropuesta(nueva_dir);
+				celda_siguiente->conexion = diropuesta(nueva_dir);
+				
+				// Se rompen las paredes correspondientes
+				romperPared(&rep[y][x], nueva_dir);
+				romperPared(&rep[nuevo_y][nuevo_x], diropuesta(nueva_dir));
+				romperPared(&rep[nuevo_y][nuevo_x], X);
 
 				y = nuevo_y; x = nuevo_x;
 				puts("Pasando a siguiente celda...");
 				// Marcamos la celda siguiente como visitada
-				celda_actual = &l->celdas[y][x]; celdas_visitadas++;
+				celda_siguiente->visitada = 1;
+				// Marcamos la celda siguiente como actual
+				celda_actual = celda_siguiente;
+				// Se incremente el total de celdas visitadas
+				celdas_visitadas++;
 			} else {
 			puts("Siguiente celda no disponible...\n");}
 		}
 		puts("Direcciones agotadas, retrocediendo...");
-		celdas_visitadas = total_celdas;
-		/*
 		// No hay mas direcciones, hay que retroceder
-		y = calcY(y, l->conexiones[y][x]);
-		x = calcX(x, l->conexiones[y][x]);*/
+		y = calcY(y, celda_actual->conexion);
+		x = calcX(x, celda_actual->conexion);
+		celda_actual = &l->celdas[y][x];
 	}
 }
 
@@ -170,52 +237,29 @@ void obtenerDirs(dir* dir_arr) {
 	}
 }
 
-char* labtostr(lab* l) {
-	char* resultado = malloc(9 * sizeof(char*) * l->alto * l->ancho + l->alto);
-
-	for(int fila = 0; fila < l->alto; fila++) {
-		for(int col = 0; col < l->ancho; col++) {
-			resultado[3*fila*(l->ancho)+ fila + 3*col] = 
-			resultado[3*fila*(l->ancho)+ fila + 3*col + 1] = 
-			resultado[3*fila*(l->ancho)+ fila + 3*col + 2] = '#';
+void labtostr(repr_celda** rep, int alto, int ancho) {
+	char* resultado;
+	char centro, arriba, abajo, derecha, izquierda;
+	for (int fila=0; fila < alto; fila++) {
+		for (int col=0; col < ancho; col++) {
+			//Muros de arriba
+			arriba = eligeSimbolo(rep[fila][col].nor);
+			printf("#%c#", arriba);
 		}
-		resultado[3*fila*(l->ancho)+ fila + 3*(l->ancho - 1) + 3] = '\n';
+		puts("");
+		for (int col=0; col < ancho; col++) {
+			//Muros del medio
+			izquierda = eligeSimbolo(rep[fila][col].oes);
+			derecha = eligeSimbolo(rep[fila][col].est);
+			centro = eligeSimbolo(rep[fila][col].cen);
+			printf("%c%c%c", izquierda, centro, derecha);
+		}
+		puts("");
 	}
 
-	return resultado;
+	for (int col=0; col < ancho; col++) {
+		abajo = eligeSimbolo(rep[alto-1][col].sur);
+		printf("#%c#", abajo);
+	}
+	puts("");
 }
-
-/*std::string asciiLaberinto (laberinto &lab) {
-	std::string ascii_lab = "";
-	
-	for (int fila = 0; fila < lab.alto; fila++){
-		// Muros superiores
-		for (int cel = 0; cel < lab.ancho; cel++) {	
-			ascii_lab.append("##");
-			ascii_lab.append(grafico(lab.tabla[fila][cel].muros[N]));
-			ascii_lab.append("##");
-		}
-		ascii_lab.append( "\n" );
-		// Muros laterales e interior de las celdas
-		for (int cel = 0; cel < lab.ancho; cel++) {	
-			// Muro izquierdo
-			ascii_lab.append(grafico(lab.tabla[fila][cel].muros[O]));
-			// Interior de la celda
-			ascii_lab.append(grafico(lab.tabla[fila][cel].interior));
-			// Muro derecho
-			ascii_lab.append(grafico(lab.tabla[fila][cel].muros[E]));
-		}
-		ascii_lab.append( "\n" );
-		// Muros inferiores
-		for (int cel = 0; cel < lab.ancho; cel++) {
-			ascii_lab.append("##");
-			ascii_lab.append(grafico(lab.tabla[fila][cel].muros[S]));
-			ascii_lab.append("##");
-		}
-
-		if (fila < lab.alto - 1)
-			ascii_lab.append( "\n" );
-	}
-
-	return ascii_lab;
-}*/

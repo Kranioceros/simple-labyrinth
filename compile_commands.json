@@ -1,16 +1,7 @@
 [
     {
-        "arguments": [
-            "cc",
-            "-c",
-            "-x",
-            "c",
-            "-std=c99",
-            "-o",
-            "labyrinth",
-            "labyrinth.c"
-        ],
-        "directory": "/home/ramiro/git/simple-labyrinth",
-        "file": "labyrinth.c"
+        "command": "cc -c -x c -std=c99 -o labyrinth labyrinth.c",
+        "directory": "/home/rama/git/simple-labyrinth",
+        "file": "/home/rama/git/simple-labyrinth/labyrinth.c"
     }
 ]

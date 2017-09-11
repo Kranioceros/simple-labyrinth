@@ -167,7 +167,7 @@ repr_celda** reprVacio(int ancho, int alto) {
 	repr_celda** rep = malloc(sizeof(repr_celda*) * alto);
 	for(int fila = 0; fila < alto; fila++) {
 		rep[fila] = malloc(sizeof(repr_celda) * ancho);
-		for(int col=0; col < 5; col++) {
+		for(int col=0; col < ancho; col++) {
 			rep[fila][col].nor = rep[fila][col].sur =
 			rep[fila][col].est = rep[fila][col].oes =
 			rep[fila][col].cen = LLENO;
@@ -200,6 +200,7 @@ void borrarLaberinto(lab *l) {
 			borrarCelda(&l->celdas[fila][col]);
 		free(l->celdas[fila]);
 	}
+	free(l->celdas);
 	free(l);
 }
 

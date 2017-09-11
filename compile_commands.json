@@ -1,7 +1,0 @@
-[
-    {
-        "command": "cc -c -x c -std=c99 -o labyrinth labyrinth.c",
-        "directory": "/home/rama/git/simple-labyrinth",
-        "file": "/home/rama/git/simple-labyrinth/labyrinth.c"
-    }
-]

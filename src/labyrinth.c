@@ -65,8 +65,8 @@ char dirtostr(dir d) {
 	switch (d) {
 		case N: return 'N';
 		case S: return 'S';
-		case E: return 'E';
 		case O: return 'O';
+		case E: return 'E';
 		case X: return 'X';
 	}
 }
@@ -208,7 +208,6 @@ void excavarLaberinto(lab* l, repr_celda** rep, int x, int y) {
 	const int total_celdas = l->alto * l->ancho;
 
 	int celdas_visitadas = 1;
-	int distancia_total = 0;
 
 	celda* celda_actual = &l->celdas[y][x];
 	romperPared(&rep[y][x], X, VACIO);
@@ -284,7 +283,6 @@ void obtenerDirs(dir* dir_arr) {
 }
 
 void labtostr(repr_celda** rep, int ancho, int alto) {
-	char* resultado;
 	char centro, arriba, abajo, derecha, izquierda;
 	for (int fila=0; fila < alto; fila++) {
 		for (int col=0; col < ancho; col++) {
@@ -314,15 +312,9 @@ void marcarSalida(repr_celda** rep, sym s, int x, int y, int ancho, int alto) {
 	// Si se encuentra en un borde, se rompe la pared
 	// Si se encuentra en una esquina, se rompe preferentemente las paredes verticales
 	// Si no es ninguna de los anteriores, se marca el centro como entrada
-	int salida_marcada = 0;
 	if (y == 0)		romperPared(&rep[y][x], N, s);
 	else if (y == alto-1)	romperPared(&rep[y][x], S, s);	
 	else if (x == 0)	romperPared(&rep[y][x], O, s); 
 	else if (x == ancho-1)	romperPared(&rep[y][x], E, s);
 	else 			romperPared(&rep[y][x], X, s);
-}
-
-// POR HACER
-void marcarSolucion(repr_celda** l, int x, int y) {
-	dir* direcciones; obtenerDirs(direcciones);
 }

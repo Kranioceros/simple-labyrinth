@@ -5,7 +5,7 @@
 
 int main() {
 	srand(time(NULL));
-	repr_lab* l = generarLaberinto(10, 10, 0, 0, 9, 9, -1);
+	repr_lab* l = generarLaberinto(5, 5, 0, 0, 4, 4, -2);
 
 	puts(dibujoLaberinto(l));
 

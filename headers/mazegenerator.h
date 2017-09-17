@@ -21,5 +21,6 @@ repr_lab* generarLaberinto(
 void borrarRepr(repr_lab*);
 
 char* dibujoLaberinto(repr_lab* l);
+void dibujarLaberinto(repr_lab* l);
 
 #endif

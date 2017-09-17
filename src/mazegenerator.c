@@ -9,26 +9,30 @@
 typedef enum {N=0, S, E, O, X} dir; // X: Ninguna direccion
 
 typedef struct celda {
+	// Indica si la celda fue visitada por el algoritmo generador
 	int visitada;
-	dir conexion; // Indica direccion desde la cual la celda fue visitada por primera vez
-	dir* dirs;    // Arreglo de 4 direcciones aleatorias
-	int dir_actual; // Indica numero de direcciones empleadas del arreglo anterior
+	// Indica direccion desde la cual la celda fue visitada por primera vez
+	dir conexion; 
+	// Arreglo de 4 direcciones aleatorias
+	dir* dirs;
+	// Indica numero de direcciones empleadas del arreglo anterior
+	int dir_actual; 
 } celda;
 
 typedef struct lab {
 	// Datos generales del laberinto
 	int alto, ancho;
-	int entradax, salidax; // Coordenadas de la entrada y salida
+	int entradax, salidax;
 	int entraday, saliday;
-	celda** celdas; // Arreglo bidimensional de celdas que conforma el laberinto
+	// Arreglo bidimensional de celdas que conforma el laberinto
+	celda** celdas;
 } lab;
 
 /* Prototipos de funciones internas */
 
 // Constructores y destructores
-repr_celda** reprVacio(int, int); 
+repr_lab* reprVacio(int, int); 
 lab* laberintoVacio(int, int);
-void borrar_Repr(repr_celda**, int, int);
 void borrarLaberinto(lab*);
 
 // Funciones auxiliares
@@ -41,11 +45,203 @@ void romperPared(repr_celda *c, dir d, sym s);
 char eligeSimbolo(sym s);
 void obtenerDirs(dir*);
 void labtostr(repr_celda**, int, int);
-void marcarSalida(repr_celda** rep, sym s, int x, int y, int ancho, int alto);
+void marcarSalida(repr_lab* rep, sym s, int x, int y);
 
-// Toma como parametro un laberinto y las coordenadas de su entrada
-// Devuelve su representacion (repr_celda**).
-void excavarLaberinto(lab*, repr_celda**, int, int);
+// Aqui sucede la magia
+void continuarLaberinto (
+		lab* l, repr_lab* rep,
+		int posx, int posy,
+		int nro_pasos, int celdas_visitadas);
+
+/* Implementacion de Funciones Principales */
+
+char* dibujoLaberinto(repr_lab* l) {
+	int largobuf = (7 * l->alto * l->ancho) + (2*l->alto + 1);
+	char* buffer = malloc(sizeof(char) * largobuf);
+	int bpos=0;
+	char centro, arriba, abajo, derecha, izquierda;
+
+	for (int fila=0; fila < l->alto; fila++) {
+		for (int col=0; col < l->ancho; col++) {
+			//Muros de arriba
+			arriba = eligeSimbolo(l->celdas[fila][col].nor);
+			buffer[bpos++] = '#';
+			buffer[bpos++] = arriba;
+			buffer[bpos++] = '#';
+		}
+		buffer[bpos++] = '\n';
+		for (int col=0; col < l->ancho; col++) {
+			//Muros del medio
+			izquierda = eligeSimbolo(l->celdas[fila][col].oes);
+			derecha = eligeSimbolo(l->celdas[fila][col].est);
+			centro = eligeSimbolo(l->celdas[fila][col].cen);
+			buffer[bpos++] = izquierda;
+			buffer[bpos++] = centro;
+			buffer[bpos++] = derecha;
+		}
+		buffer[bpos++] = '\n';
+	}
+
+	for (int col=0; col < l->ancho; col++) {
+		abajo = eligeSimbolo(l->celdas[l->alto-1][col].sur);
+		buffer[bpos++] = '#';
+		buffer[bpos++] = abajo;
+		buffer[bpos++] = '#';
+	}
+	buffer[bpos++] = '\n';
+
+	return buffer;
+}
+
+void dibujarLaberinto(repr_lab* l) {
+	char centro, arriba, abajo, derecha, izquierda;
+
+	for (int fila=0; fila < l->alto; fila++) {
+		for (int col=0; col < l->ancho; col++) {
+			//Muros de arriba
+			arriba = eligeSimbolo(l->celdas[fila][col].nor);
+			putchar('#');
+			putchar(arriba);
+			putchar('#');
+		}
+		putchar('\n');
+		for (int col=0; col < l->ancho; col++) {
+			//Muros del medio
+			izquierda = eligeSimbolo(l->celdas[fila][col].oes);
+			derecha = eligeSimbolo(l->celdas[fila][col].est);
+			centro = eligeSimbolo(l->celdas[fila][col].cen);
+			printf("%c%c%c", izquierda, centro, derecha);
+		}
+		putchar('\n');
+	}
+	for (int col=0; col < l->ancho; col++) {
+		abajo = eligeSimbolo(l->celdas[l->alto-1][col].sur);
+		putchar('#');
+		putchar(abajo);
+		putchar('#');
+	}
+	putchar('\n');
+}
+
+repr_lab* generarLaberinto (int ancho, int alto,
+		int entradax, int entraday,
+		int salidax, int saliday,
+		int pasos)
+	{
+
+	lab* l = laberintoVacio(ancho, alto);
+	repr_lab* rep = reprVacio(ancho, alto);
+
+	l->celdas[entraday][entradax].visitada = 1;
+	rep->celdas[entraday][entradax].cen = VACIO;
+
+	continuarLaberinto(l, rep, entradax, entraday, pasos, 1);
+
+	marcarSalida(rep, ENTRADA, entradax, entraday);
+	marcarSalida(rep, SALIDA, salidax, saliday);
+
+	borrarLaberinto(l);
+
+	return rep;
+}
+
+void continuarLaberinto (
+		lab* l, repr_lab* rep,
+		int posx, int posy,
+		int nro_pasos, int celdas_visitadas)
+	{
+
+	const int total_celdas = l->ancho * l->alto;
+	celda* celda_actual = &l->celdas[posy][posx];
+	int paso = 0;
+	int pasos_alcanzados = paso >= nro_pasos;
+
+	while (celdas_visitadas < total_celdas) {
+		// Si quedan direcciones, se elige una
+		// Si no, se vuelve atras
+		while (celda_actual->dir_actual < 4) {
+			puts("----------------------");
+			printf("X:%i Y:%i Celdas visitadas: %i\n",
+					posx, posy,
+					celdas_visitadas);
+
+			dir nueva_dir = celda_actual->dirs[celda_actual->dir_actual];
+			int nuevo_y = calcY(posy, nueva_dir);
+			int nuevo_x = calcX(posx, nueva_dir);
+			celda_actual->dir_actual++;
+
+			printf("Nueva dir: %c, Nuevo X: %i, Nuevo Y: %i\n", 
+					dirtostr(nueva_dir), nuevo_x, nuevo_y);
+			printf("Numero de direccion: %i\n", celda_actual->dir_actual);
+			printf("Numero de paso: %i\n", paso);
+
+			// Si la siguiente celda no esta ocupada, se avanza
+			// De lo contrario, se intenta con otra direccion
+			if (	nuevo_y < l->alto && nuevo_y >= 0 &&
+				nuevo_x < l->ancho && nuevo_x >= 0 &&
+				l->celdas[nuevo_y][nuevo_x].visitada == 0	)
+			{
+				celda *celda_siguiente = &l->celdas[nuevo_y][nuevo_x];
+
+				// Se hace la conexion con la celda actual
+				puts("Siguiente celda disponible!");	
+				celda_siguiente->conexion = diropuesta(nueva_dir);
+				
+				// Se rompen las paredes correspondientes
+				romperPared(&rep->celdas[posy][posx],
+						nueva_dir,
+						VACIO);
+				romperPared(&rep->celdas[nuevo_y][nuevo_x],
+						diropuesta(nueva_dir),
+						VACIO);
+				romperPared(&rep->celdas[nuevo_y][nuevo_x],
+						X,
+						VACIO);
+
+				posy = nuevo_y; posx = nuevo_x;
+				puts("Pasando a siguiente celda...");
+
+				// Se incrementa en uno el paso si la celda
+				// no habia sido visitada. Ademas se la marca como
+				// visitada.
+				if (!celda_siguiente->visitada) {
+					paso++;
+					celda_siguiente->visitada = 1;
+					pasos_alcanzados = paso >= nro_pasos;
+				}
+
+				// Marcamos la celda siguiente como actual
+				celda_actual = celda_siguiente;
+				// Se incrementa el total de celdas visitadas
+				celdas_visitadas++;
+
+				// Si se realizaron los pasos especificados, se
+				// termina la funcion.
+				if (pasos_alcanzados && nro_pasos > 0) {
+					puts("Numero de pasos alcanzados, retornando..");
+					return;
+				}
+
+			} else {
+				puts("Siguiente celda no disponible...\n");
+			}
+		}
+		puts("Direcciones agotadas, retrocediendo...");
+		// No hay mas direcciones, hay que retroceder
+		posy = calcY(posy, celda_actual->conexion);
+		posx = calcX(posx, celda_actual->conexion);
+		celda_actual = &l->celdas[posy][posx];
+	}
+	puts("Todas las celdas visitadas, retornando...");
+}
+
+void borrarRepr(repr_lab* rl) {
+	for (int fila = 0; fila < rl->alto; fila++) {
+		free(rl->celdas[fila]);	
+	}
+	free(rl->celdas);
+	free(rl);
+}
 
 /* Implementacion de funciones internas */
 
@@ -61,26 +257,24 @@ void borrarCelda(celda* c) {
 	free(c->dirs);	
 }
 
-repr_celda** reprVacio(int ancho, int alto) {
-	repr_celda** rep = malloc(sizeof(repr_celda*) * alto);
+repr_lab* reprVacio(int ancho, int alto) {
+	repr_lab* rl = malloc(sizeof(repr_lab));
+	rl->celdas = malloc(sizeof(repr_celda*) * alto);
 	for(int fila = 0; fila < alto; fila++) {
-		rep[fila] = malloc(sizeof(repr_celda) * ancho);
+		rl->celdas[fila] = malloc(sizeof(repr_celda) * ancho);
 		for(int col=0; col < ancho; col++) {
-			rep[fila][col].nor = rep[fila][col].sur =
-			rep[fila][col].est = rep[fila][col].oes =
-			rep[fila][col].cen = LLENO;
+			rl->celdas[fila][col].nor = rl->celdas[fila][col].sur =
+			rl->celdas[fila][col].est = rl->celdas[fila][col].oes =
+			rl->celdas[fila][col].cen = LLENO;
 		}
 	}
 
-	return rep;
+	rl->alto = alto; rl->ancho = ancho;
+
+	return rl;
 }
 
-void borrar_Repr(repr_celda** r, int ancho, int alto) {
-	for (int fila = 0; fila < alto; fila++) {
-		free(r[fila]);	
-	}
-	free(r);
-}
+
 
 lab* laberintoVacio(int ancho, int alto) {
 	lab* nuevo = malloc(sizeof(lab));
@@ -169,175 +363,14 @@ void obtenerDirs(dir* dir_arr) {
 	}
 }
 
-void labtostr(repr_celda** rep, int ancho, int alto) {
-	char centro, arriba, abajo, derecha, izquierda;
-	for (int fila=0; fila < alto; fila++) {
-		for (int col=0; col < ancho; col++) {
-			//Muros de arriba
-			arriba = eligeSimbolo(rep[fila][col].nor);
-			printf("#%c#", arriba);
-		}
-		puts("");
-		for (int col=0; col < ancho; col++) {
-			//Muros del medio
-			izquierda = eligeSimbolo(rep[fila][col].oes);
-			derecha = eligeSimbolo(rep[fila][col].est);
-			centro = eligeSimbolo(rep[fila][col].cen);
-			printf("%c%c%c", izquierda, centro, derecha);
-		}
-		puts("");
-	}
-
-	for (int col=0; col < ancho; col++) {
-		abajo = eligeSimbolo(rep[alto-1][col].sur);
-		printf("#%c#", abajo);
-	}
-	puts("");
-}
-
-char* dibujoLaberinto(repr_lab* l) {
-	int largobuf = (7 * l->alto * l->ancho) + (2*l->alto + 1);
-	char* buffer = malloc(sizeof(char) * largobuf);
-	int bpos=0;
-	char centro, arriba, abajo, derecha, izquierda;
-
-	for (int fila=0; fila < l->alto; fila++) {
-		for (int col=0; col < l->ancho; col++) {
-			//Muros de arriba
-			arriba = eligeSimbolo(l->celdas[fila][col].nor);
-			buffer[bpos++] = '#';
-			buffer[bpos++] = arriba;
-			buffer[bpos++] = '#';
-		}
-		buffer[bpos++] = '\n';
-		for (int col=0; col < l->ancho; col++) {
-			//Muros del medio
-			izquierda = eligeSimbolo(l->celdas[fila][col].oes);
-			derecha = eligeSimbolo(l->celdas[fila][col].est);
-			centro = eligeSimbolo(l->celdas[fila][col].cen);
-			buffer[bpos++] = izquierda;
-			buffer[bpos++] = centro;
-			buffer[bpos++] = derecha;
-		}
-		buffer[bpos++] = '\n';
-	}
-
-	for (int col=0; col < l->ancho; col++) {
-		abajo = eligeSimbolo(l->celdas[l->alto-1][col].sur);
-		buffer[bpos++] = '#';
-		buffer[bpos++] = abajo;
-		buffer[bpos++] = '#';
-	}
-	buffer[bpos++] = '\n';
-
-	return buffer;
-}
-
-void marcarSalida(repr_celda** rep, sym s, int x, int y, int ancho, int alto) {
+void marcarSalida(repr_lab* rep, sym s, int x, int y) {
 	// Si se encuentra en un borde, se rompe la pared
-	// Si se encuentra en una esquina, se rompe preferentemente las paredes verticales
+	// Si se encuentra en una esquina, se rompe preferentemente
+	// las paredes verticales
 	// Si no es ninguna de los anteriores, se marca el centro como entrada
-	if (y == 0)		romperPared(&rep[y][x], N, s);
-	else if (y == alto-1)	romperPared(&rep[y][x], S, s);	
-	else if (x == 0)	romperPared(&rep[y][x], O, s); 
-	else if (x == ancho-1)	romperPared(&rep[y][x], E, s);
-	else 			romperPared(&rep[y][x], X, s);
-}
-
-void continuarLaberinto (
-		lab* l, repr_lab* rep,
-		int posx, int posy,
-		int nro_pasos, int celdas_visitadas)
-	{
-
-	const int total_celdas = l->ancho * l->alto;
-	celda* celda_actual = &l->celdas[posy][posx];
-	int paso = 0;
-	int pasos_alcanzados = paso >= nro_pasos;
-
-	while (celdas_visitadas < total_celdas) {
-		// Si quedan direcciones, se elige una
-		// Si no, se vuelve atras
-		while (celda_actual->dir_actual < 4) {
-			puts("----------------------");
-			printf("X:%i Y:%i Celdas visitadas: %i\n", posx, posy, celdas_visitadas);
-
-			dir nueva_dir = celda_actual->dirs[celda_actual->dir_actual];
-			int nuevo_y = calcY(posy, nueva_dir);
-			int nuevo_x = calcX(posx, nueva_dir);
-			celda_actual->dir_actual++;
-
-			printf("Nueva dir: %c, Nuevo X: %i, Nuevo Y: %i\n", 
-					dirtostr(nueva_dir), nuevo_x, nuevo_y);
-			printf("Numero de direccion: %i\n", celda_actual->dir_actual);
-			printf("Numero de paso: %i\n", paso);
-
-			// Si la siguiente celda no esta ocupada, se avanza
-			// De lo contrario, se intenta con otra direccion
-			if (	nuevo_y < l->alto && nuevo_y >= 0 &&
-				nuevo_x < l->ancho && nuevo_x >= 0 &&
-				l->celdas[nuevo_y][nuevo_x].visitada == 0	)
-			{
-				celda *celda_siguiente = &l->celdas[nuevo_y][nuevo_x];
-
-				// Se hace la conexion con la celda actual
-				puts("Siguiente celda disponible!");	
-				celda_siguiente->conexion = diropuesta(nueva_dir);
-				
-				// Se rompen las paredes correspondientes
-				romperPared(&rep->celdas[posy][posx], nueva_dir, VACIO);
-				romperPared(&rep->celdas[nuevo_y][nuevo_x], diropuesta(nueva_dir), VACIO);
-				romperPared(&rep->celdas[nuevo_y][nuevo_x], X, VACIO);
-
-				posy = nuevo_y; posx = nuevo_x;
-				puts("Pasando a siguiente celda...");
-
-				// Se incrementa en uno el paso si la celda
-				// no habia sido visitada. Ademas se la marca como visitada.
-				if (!celda_siguiente->visitada) {
-					paso++;
-					celda_siguiente->visitada = 1;
-					pasos_alcanzados = paso >= nro_pasos;
-				}
-
-				// Marcamos la celda siguiente como actual
-				celda_actual = celda_siguiente;
-				// Se incremente el total de celdas visitadas
-				celdas_visitadas++;
-
-				if (pasos_alcanzados && nro_pasos > 0) {
-					puts("Numero de pasos alcanzados, retornando..."); return;
-				}
-
-			} else {
-			puts("Siguiente celda no disponible...\n");}
-		}
-		puts("Direcciones agotadas, retrocediendo...");
-		// No hay mas direcciones, hay que retroceder
-		posy = calcY(posy, celda_actual->conexion);
-		posx = calcX(posx, celda_actual->conexion);
-		celda_actual = &l->celdas[posy][posx];
-	}
-	puts("Todas las celdas visitadas, retornando...");
-}
-
-
-repr_lab* generarLaberinto (int ancho, int alto,
-		int entradax, int entraday,
-		int salidax, int saliday,
-		int pasos)
-	{
-
-	lab* l = laberintoVacio(ancho, alto);
-	repr_lab* rep = malloc(sizeof(repr_lab));
-	rep->ancho = ancho; rep->alto = alto;
-	rep->celdas = reprVacio(ancho, alto);
-
-	l->celdas[entraday][entradax].visitada = 1;
-	rep->celdas[entraday][entradax].cen = VACIO;
-
-	continuarLaberinto(l, rep, entradax, entraday, pasos, 1);
-
-	borrar_Repr(rep->celdas, ancho, alto);
-	return rep;
+	if (y == 0)			romperPared(&rep->celdas[y][x], N, s);
+	else if (y == rep->alto-1)	romperPared(&rep->celdas[y][x], S, s);	
+	else if (x == 0)		romperPared(&rep->celdas[y][x], O, s); 
+	else if (x == rep->ancho-1)	romperPared(&rep->celdas[y][x], E, s);
+	else 				romperPared(&rep->celdas[y][x], X, s);
 }

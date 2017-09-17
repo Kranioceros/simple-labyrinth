@@ -1,14 +1,13 @@
 SRC_DIR=src
-OBJECTS=mazerunner.o
+OBJECTS=mazegenerator.o prueba_mazegen.o
 EXECUTABLE=main
 CC=clang
-CFLAGS=-x c -std=c99 -Wall -g
+CFLAGS=-std=c99 -Wall -g
 
 all: labyrinth $(OBJECTS)
 
 labyrinth: $(SRC_DIR)/labyrinth.c
 	$(CC) $(CFLAGS) $(SRC_DIR)/labyrinth.c -o labyrinth.out
 
-mazerunner.o: $(SRC_DIR)/mazerunner.c
-	$(CC) $(CFLAGS) -c $(SRC_DIR)/mazerunner.c -o mazerunner.o
-
+prueba_mazegen: $(SRC_DIR)/prueba_mazegen.c $(SRC_DIR)/mazegenerator.c
+	$(CC) $(CFLAGS) $(SRC_DIR)/prueba_mazegen.c $(SRC_DIR)/mazegenerator.c -o prueba_mazegen.out

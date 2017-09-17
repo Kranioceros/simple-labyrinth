@@ -1,11 +1,25 @@
+#ifndef MAZEGEN
+#define MAZEGEN
+
 typedef enum {LLENO, VACIO, ENTRADA, SALIDA, JUGADOR} sym;
 
 typedef struct repr_celda {
 	sym nor, sur, est, oes, cen;		
 } repr_celda;
 
-repr_celda** generarLaberinto(int ancho, int alto);
-repr_celda** generarLaberinto(int ancho, int alto, int entrada);
-repr_celda** generarLaberinto(int ancho, int alto, int entrada, int salida);
+typedef struct repr_lab {
+	repr_celda** celdas;
+	int ancho, alto;
+} repr_lab;
 
-char* dibujoLaberinto(repr_celda** l);
+repr_lab* generarLaberinto(
+		int ancho, int alto, 
+		int entradax, int entraday,
+		int salidax, int saliday,
+		int pasos);
+
+void borrarRepr(repr_lab*);
+
+char* dibujoLaberinto(repr_lab* l);
+
+#endif

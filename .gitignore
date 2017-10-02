@@ -2,3 +2,4 @@ compile_commands.json
 *.out
 *.o
 *.swp
+*.o

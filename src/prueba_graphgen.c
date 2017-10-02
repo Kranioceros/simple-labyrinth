@@ -1,3 +1,4 @@
+#define _POSIX_C_SOURCE 199309L
 #include <stdio.h>
 #include <stdlib.h>
 #include <time.h>
@@ -15,13 +16,18 @@ int estaDentro(int dir);
 
 int main (int argc, char* argv[]) {
 	int ancho, alto, entradax, entraday, nropasos;
+	long tiempoms;
 	sscanf(argv[1], "%d", &ancho);
 	sscanf(argv[2], "%d", &alto);
 	sscanf(argv[3], "%d", &entradax);
 	sscanf(argv[4], "%d", &entraday);
 	sscanf(argv[5], "%d", &nropasos);
+	sscanf(argv[6], "%li", &tiempoms);
 
 	srand(time(NULL));
+
+	struct timespec tiempo;	
+	tiempo.tv_sec = 0; tiempo.tv_nsec = tiempoms * 1000000;
 
 	rl = generarLaberinto(ancho, alto,
 			entradax, entraday,
@@ -31,7 +37,7 @@ int main (int argc, char* argv[]) {
 	x = entradax; y = entraday;
 	rl->celdas[y][x].cen = JUGADOR;
 	dibujarLaberinto(rl);
-	sleep(1);
+	nanosleep(&tiempo, NULL);
 
 	nodo* grafo = crearNodo();
 	nodo* nodoActual = grafo;
@@ -63,7 +69,9 @@ int main (int argc, char* argv[]) {
 		// PELIGRO! Puede dereferenciar puntero nulo (en teoria no)
 		puts("Eligiendo direccion de direcciones disponibles...");
 		printf("Direccion actual: %d\n", dirActual);
-		while( !nodoDisponible(nodoActual->caminos[dirActual]) && dirActual < 4 ) {
+		while( !nodoDisponible(nodoActual->caminos[dirActual]) &&
+			dirActual < 4 ) 
+		{
 			puts("Probando nueva direccion...");
 			dirActual++;
 			printf("Direccion nueva: %d\n", dirActual);
@@ -80,14 +88,17 @@ int main (int argc, char* argv[]) {
 			} else {
 				// Se vuelve al nodo anterior
 				for (int dir = 0; dir < 4; dir++) {
-					if (nodoActual->caminos[dir] == nodoActual->anterior)
+					if (nodoActual->caminos[dir] == 
+					nodoActual->anterior)
+					{
 						dirActual = dir;
+					}
 				}
 				nodoActual = nodoActual->anterior;
 				moverJugador(dirActual);
 				dirActual = 0;
 				dibujarLaberinto(rl);
-				sleep(1);
+				nanosleep(&tiempo, NULL);
 			}
 		} else {
 			// Se encontro un nodo y se debe avanzar
@@ -113,7 +124,7 @@ int main (int argc, char* argv[]) {
 				}
 			}
 			dibujarLaberinto(rl);
-			sleep(1);
+			nanosleep(&tiempo, NULL);
 		}
 
 	}

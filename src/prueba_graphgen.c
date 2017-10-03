@@ -22,16 +22,21 @@ int main (int argc, char* argv[]) {
 	}
 	int ancho, alto, entradax, entraday, nropasos;
 	long tiempoms; int tiempos;
+	int semilla;
+
 	sscanf(argv[1], "%d", &ancho);
 	sscanf(argv[2], "%d", &alto);
 	sscanf(argv[3], "%d", &entradax);
 	sscanf(argv[4], "%d", &entraday);
 	sscanf(argv[5], "%d", &nropasos);
 	sscanf(argv[6], "%li", &tiempoms);
+	sscanf(argv[7], "%i", &semilla);
 
 	tiempos = tiempoms / 1000; tiempoms %= 1000;
+	if (semilla < 0) semilla = time(NULL);
 
-	srand(time(NULL));
+	/* Se inicializa el generador de numeros con la semilla */
+	srand(semilla);
 
 	struct timespec tiempo;	
 	tiempo.tv_sec = tiempos; tiempo.tv_nsec = tiempoms * 1000000;

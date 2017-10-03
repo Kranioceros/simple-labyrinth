@@ -15,8 +15,13 @@ int hayPared(int dir);
 int estaDentro(int dir);
 
 int main (int argc, char* argv[]) {
+	if (argc < 7) {
+		puts("Uso:\n\tprueba-graphgen <ancho> <alto> <posx> <posy>"
+		"<pasos> <tiempoms>");
+		return 0;
+	}
 	int ancho, alto, entradax, entraday, nropasos;
-	long tiempoms;
+	long tiempoms; int tiempos;
 	sscanf(argv[1], "%d", &ancho);
 	sscanf(argv[2], "%d", &alto);
 	sscanf(argv[3], "%d", &entradax);
@@ -24,10 +29,12 @@ int main (int argc, char* argv[]) {
 	sscanf(argv[5], "%d", &nropasos);
 	sscanf(argv[6], "%li", &tiempoms);
 
+	tiempos = tiempoms / 1000; tiempoms %= 1000;
+
 	srand(time(NULL));
 
 	struct timespec tiempo;	
-	tiempo.tv_sec = 0; tiempo.tv_nsec = tiempoms * 1000000;
+	tiempo.tv_sec = tiempos; tiempo.tv_nsec = tiempoms * 1000000;
 
 	rl = generarLaberinto(ancho, alto,
 			entradax, entraday,
@@ -43,10 +50,10 @@ int main (int argc, char* argv[]) {
 	nodo* nodoActual = grafo;
 	nodoActual->visitado=1;
 	nodoActual->extremo=1;
-	
-	int paso = 0;
-	int dirActual = 0;
+	nodoActual->dir_anterior=NADA;
 
+	if (nropasos < 0) nropasos = ancho*alto + 1;
+	
 	// Se mira alrededor y se agregan los nodos
 	// Para agregarse debe cumplir las siguientes condiciones:
 	// 	+ Debe existir una celda en esa direccion
@@ -54,7 +61,7 @@ int main (int argc, char* argv[]) {
 	// Si se intenta asignar un nodo a un camino que ya tiene asignado uno,
 	// se lo deja intacto.
 	puts("Mirando alrededor y agregando nodos...");
-	for (int dir = 0; dir < 4; dir++) {
+	for (int dir = NORTE; dir <= OESTE; dir++) {
 		if (estaDentro(dir) && !hayPared(dir)) {
 			puts("Nodo agregado!");
 			printf("Direccion: %d\n", dir);
@@ -63,39 +70,35 @@ int main (int argc, char* argv[]) {
 		}
 	}
 
+	int paso = 0;
+	int dirActual = NORTE;
+
 	while (paso < nropasos) {
 		printf("Paso numero %d\n", paso + 1);
 		// Se busca algun nodo adyacente que no haya sido visitado
-		// PELIGRO! Puede dereferenciar puntero nulo (en teoria no)
+		// PELIGRO! Puede dereferenciar puntero nulo (en teoria)
 		puts("Eligiendo direccion de direcciones disponibles...");
 		printf("Direccion actual: %d\n", dirActual);
-		while( !nodoDisponible(nodoActual->caminos[dirActual]) &&
-			dirActual < 4 ) 
+		while( dirActual <= OESTE &&
+		       !nodoDisponible(nodoActual->caminos[dirActual])) 
 		{
-			puts("Probando nueva direccion...");
-			dirActual++;
-			printf("Direccion nueva: %d\n", dirActual);
+			printf("Direccion %d no disponible\n", dirActual++);
 		}
 
 		// Si no se encontro ninguno, se retrocede
-		if (dirActual > 3) {
+		if (dirActual > OESTE) {
 			puts("No se encontro ninguna direccion. Retrocediendo...");
 			// Si no hay nodo anterior, se ha vuelto a la entrada
 			// y se termina el programa.
-			if (nodoActual->anterior == NULL) {
+			if (nodoActual->dir_anterior == NADA) {
 				puts("No hay donde retroceder. Break");
 				break;
 			} else {
-				// Se vuelve al nodo anterior
-				for (int dir = 0; dir < 4; dir++) {
-					if (nodoActual->caminos[dir] == 
-					nodoActual->anterior)
-					{
-						dirActual = dir;
-					}
-				}
-				nodoActual = nodoActual->anterior;
-				moverJugador(dirActual);
+				// Se mueve al jugador a la celda anterior
+				moverJugador(nodoActual->dir_anterior);
+				// Se mueve el puntero al nodo anterior
+				nodoActual = moverse(nodoActual,
+						     nodoActual->dir_anterior);
 				dirActual = 0;
 				dibujarLaberinto(rl);
 				nanosleep(&tiempo, NULL);
@@ -105,16 +108,19 @@ int main (int argc, char* argv[]) {
 			puts("Direccion que lleva a nodo encontrada. Avanzando...");
 
 			paso++;
+			// Se mueve al jugador a la celda siguiente
+			moverJugador(dirActual);
 			// El nodo siguiente pasa a ser el actual
-			nodoActual = nodoActual->caminos[dirActual];
+			nodoActual = moverse(nodoActual,
+				     dirActual);
 			// Se marca el nuevo nodoActual como visitado
 			nodoActual->visitado = 1;
-			moverJugador(dirActual);
+			// Se reinicia la direccion actual
 			dirActual = 0;
 
 			// Se mira alrededor y se agregan los nodos
 			puts("Mirando alrededor y agregando nodos...");
-			for (int dir = 0; dir < 4; dir++) {
+			for (int dir = NORTE; dir <= OESTE; dir++) {
 				if (estaDentro(dir) && !hayPared(dir)) {
 					puts("Nodo agregado!");
 					printf("Direccion: %d\n", dir);

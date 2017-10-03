@@ -7,13 +7,15 @@ CFLAGS=-std=c99 -Wall -g
 all: labyrinth $(OBJECTS)
 
 labyrinth: $(SRC_DIR)/labyrinth.c
-	$(CC) $(CFLAGS) $(SRC_DIR)/labyrinth.c -o labyrinth.out
+	$(CC) $(CFLAGS) $(SRC_DIR)/labyrinth.c -o labyrinth
 
 prueba_mazegen: mazegenerator.o prueba_mazegen.o
-	$(CC) $(CFLAGS) mazegenerator.o prueba_mazegen.o -o prueba_mazegen.out
+	$(CC) $(CFLAGS) mazegenerator.o prueba_mazegen.o -o prueba_mazegen
 
 prueba_graphgen: graphgenerator.o mazegenerator.o prueba_graphgen.o
-	$(CC) $(CFLAGS) graphgenerator.o mazegenerator.o prueba_graphgen.o -o prueba_graphgen.out
+	$(CC) $(CFLAGS) graphgenerator.o mazegenerator.o prueba_graphgen.o -o prueba_graphgen
+
+#Object files
 
 mazegenerator.o: $(SRC_DIR)/mazegenerator.c 
 	$(CC) $(CFLAGS) -c $(SRC_DIR)/mazegenerator.c -o mazegenerator.o

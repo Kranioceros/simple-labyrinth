@@ -15,7 +15,7 @@ int hayPared(int dir);
 int estaDentro(int dir);
 
 int main (int argc, char* argv[]) {
-	if (argc < 7) {
+	if (argc < 8) {
 		puts("Uso:\n\tprueba-graphgen <ancho> <alto> <posx> <posy>"
 		"<pasos> <tiempoms>");
 		return 0;
@@ -139,7 +139,9 @@ int main (int argc, char* argv[]) {
 		}
 
 	}
-
+	char numeracion[100] = "";
+	char sep[100] = "";
+	imprimirGrafo(grafo, 0, numeracion, sep);
 	borrarGrafo(grafo);
 	borrarRepr(rl);
 }

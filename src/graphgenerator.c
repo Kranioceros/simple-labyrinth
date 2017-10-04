@@ -1,6 +1,7 @@
 #include "../headers/graphgeneration.h"
 #include <stdlib.h>
 #include <stdio.h>
+#include <string.h>
 
 int opuesta(int dir) {
 	switch(dir) {
@@ -10,6 +11,17 @@ int opuesta(int dir) {
 		case ESTE: 	return OESTE;
 	}
 	return NADA;
+}
+
+// Funcion para hacer debugging. No esta en la cabecera.
+char dirtoc(int dir) {
+	switch(dir) {
+		case NORTE: return 'N';
+		case SUR: return 'S';
+		case ESTE: return 'E';
+		case OESTE: return 'O';
+		default: return 'X';
+	}
 }
 
 nodo* crearNodo() {
@@ -68,4 +80,57 @@ void borrarGrafo(nodo* n) {
 		}
 	}
 	free(n);
+}
+
+// WARNING: Esta functin esta hecha de mimbre
+void imprimirGrafo(nodo* n, int indentacion, char numeracion[], char sep[]) {
+	char nro_nodo[100] = ""; sprintf(nro_nodo, "%d", opuesta(n->dir_anterior));
+	strcat(numeracion, nro_nodo);
+
+
+	fputs("->", stdout);
+	printf("(%c): Nodo %s\n", dirtoc(opuesta(n->dir_anterior)), numeracion);
+
+	//getchar();
+	int hasta_adonde = 0;
+	/* Se determina cuantos subnodos hay */
+	for(int dir=NORTE; dir <= OESTE; dir++) {
+		if (n->caminos[dir] != NULL && dir != n->dir_anterior)
+			hasta_adonde = dir;
+	}
+
+	/* Expandimos sep */
+	strcat(sep, "     |");
+
+	/* Se imprimen todos los nodos necesarios con ese sep */
+	//puts("Primer for");
+	for(int dir=NORTE; dir < hasta_adonde; dir++) {
+		if (n->caminos[dir] != NULL && dir != n->dir_anterior) {
+			//printf("Dir actual: %d\n", dir);
+			puts(sep);
+			fputs(sep, stdout);
+			//getchar();
+			imprimirGrafo(n->caminos[dir], indentacion+1, numeracion, sep);
+			//getchar();
+		}
+	}
+
+	/* Acortamos sep, borrando el " |" */
+	sep[5*indentacion] = '\0';
+	/* Se agregan dos espacios en blanco */
+	strcat(sep, "   ");
+
+	/* Se imprimen todos los nodos necesarios con nuevo sep */
+	//puts("Segundo for");
+	for(int dir=hasta_adonde; dir <= OESTE; dir++) {
+		if (n->caminos[dir] != NULL && dir != n->dir_anterior) {
+			//printf("Dir actual: %d\n", dir);
+			fputs(sep, stdout); fputs("|\n", stdout);
+			fputs(sep, stdout); putchar('|');
+			//getchar();
+			imprimirGrafo(n->caminos[dir], indentacion+1, numeracion, sep);
+			//getchar();
+		}
+	}
+
 }

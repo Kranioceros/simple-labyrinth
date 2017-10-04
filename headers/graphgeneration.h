@@ -21,3 +21,5 @@ nodo* moverse(nodo* n, int dir); // Si no hay nodo en la direccion, devuelve el 
 int opuesta(int dir);
 
 void borrarGrafo(nodo* n);
+
+void imprimirGrafo(nodo* n, int indentacion, char numeracion[], char sep[]);

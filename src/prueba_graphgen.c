@@ -16,8 +16,10 @@ int estaDentro(int dir);
 
 int main (int argc, char* argv[]) {
 	if (argc < 8) {
-		puts("Uso:\n\tprueba-graphgen <ancho> <alto> <posx> <posy>"
-		"<pasos> <tiempoms>");
+		puts("Uso:\n\tprueba-graphgen <ancho> <alto> <posx> <posy> <tiempoms> <pasos> <semilla>\n");
+		puts("Si se le pasa -1 a pasos o semilla, el programa utiliza valores por defecto.");
+		puts("Para pasos no define ningun limite y mapea el laberinto por completo.");
+		puts("Para semilla elige el valor devuelto por time() durante la ejecucion del programa.\n");
 		return 0;
 	}
 	int ancho, alto, entradax, entraday, nropasos;
@@ -28,8 +30,8 @@ int main (int argc, char* argv[]) {
 	sscanf(argv[2], "%d", &alto);
 	sscanf(argv[3], "%d", &entradax);
 	sscanf(argv[4], "%d", &entraday);
-	sscanf(argv[5], "%d", &nropasos);
-	sscanf(argv[6], "%li", &tiempoms);
+	sscanf(argv[5], "%li", &tiempoms);
+	sscanf(argv[6], "%d", &nropasos);
 	sscanf(argv[7], "%i", &semilla);
 
 	tiempos = tiempoms / 1000; tiempoms %= 1000;
